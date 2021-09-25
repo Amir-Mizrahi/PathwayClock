@@ -16,7 +16,7 @@ class PathwayClock:
         shap_values = self.explainer(X_test)
         df_results = pd.DataFrame()
         df_results["predicted_age"] = pred
-        top_pathways = np.apply_along_axis(lambda x: x.argsort()[-3:][::-1], 1, abs(shap_values.values))
+        top_pathways = np.apply_along_axis(lambda x: x.argsort()[-3:][::-1], 1, shap_values.values)
         df_results = pd.concat([df_results, pd.DataFrame(X_test.columns[top_pathways], index=df_results.index)], axis=1)
         return df_results.to_dict()
 
