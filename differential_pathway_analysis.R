@@ -124,9 +124,9 @@ run_example = function()
 
 		
 		#
-	  	# Load example Parkinson's disease case/control gene expression dataset from GEO
-	  	#
-		#    Dataset GSE8397: L. B. Moran et al., Neurogenetics, 2006, SN + frontal gyrus, post mortem,	PD (29), healthy (18)
+	  # Load example Parkinson's disease case/control gene expression dataset from GEO
+	  #
+	  #    Dataset GSE8397: L. B. Moran et al., Neurogenetics, 2006, SN + frontal gyrus, post mortem,	PD (29), healthy (18)
 		#    Array platform: Affymetrix HG-U133A
 		#
 
@@ -244,7 +244,7 @@ run_example = function()
 		# dim(moran_symb)
 
 	  
-	  	# Extract pathway activities
+	  # Extract pathway activities
 		moran_path = summarized_pathway_activity(moran_symb, gsets=pathlst, type="median", minsize = 10)			
 		print(moran_path[1:5,1:5])
 
@@ -308,13 +308,79 @@ run_example = function()
 		
 	
 		# Heat map visualization of top 10 pathways	
-		require('gplots')	
+		require('gplots')
+		
 		curdat = as.matrix(moran_path[match(names(pathways_agepred_ranked)[1:10], rownames(moran_path)),])
-		heatmap.2(curdat, hclustfun=function(dist) {hclust(dist, method='average')}, distfun=function(x) {as.dist(1-cor(t(x), method="pearson"))}, key=TRUE, symkey=FALSE, col=colorpanel(511, "blue","white","red"),density.info="none", trace="none", cexRow=0.5, dendrogram="both", scale="row")		
+		
+		heatmap.2(curdat, hclustfun=function(dist) {hclust(dist, method='average')}, distfun=function(x) {as.dist(1-cor(t(x), method="pearson"))}, key=TRUE, symkey=FALSE, col=colorpanel(511, "blue","white","red"),density.info="none", trace="none", cexRow=0.5, dendrogram="both", scale="row")
+		
+	
 	
 		write.table(moran_ages[nigra_ind], file="moran_ages.txt", quote=F, col.names=F, row.names=F)
 		write.table(moran_outcomefilt[nigra_ind], file="moran_clinical_outcome.txt", quote=F, col.names=F, row.names=F)
 		write.table(round(moran_path,2), file="moran_pathway_activity_matrix.txt", quote=F, col.names=F, row.names=T)
+		
+		
+		
+		#
+		# Load data for GSE25219 dataset (Human Brain Transcriptome Atlas)
+		#
+		
+		
+		# gene expression data
+		brainall_data <- read.table(gzfile("GSE25219-GPL5175_series_matrix.txt.gz"), header=T, comment.char="!", sep="\t")
+		# use identifiers in first column as rownames
+		brainall = as.matrix(brainall_data[,2:ncol(brainall_data)])
+		rownames(brainall) = brainall_data[,1]
+		
+		# annotation
+		annotmat = read.table("GSE25219_HBTAtlas_annotation_data.txt", header=TRUE, sep="\t")
+		sample_all = as.character(annotmat[,1])
+		stageall = annotmat[,2]
+		gendersall = ifelse(annotmat[,3]=="f",0,1)
+		brainregions = sapply(annotmat[,1], function(x) strsplit(as.matrix(x), "_")[[1]][2])		
+		
+		annotfull = read.table('GSE25219_GPL5175_full_annotations.txt', header=FALSE, sep="\t", comment.char="#", fill=T)
+		#all(match(annotfull$V1, colnames(brainall)) == 1:ncol(brainall))
+		#[1] TRUE
+				
+		# load gene labels (manually extracted from GPL platform annotations)
+		genelabmat = read.table("GSE25219_HBTAtlas_gene_symbols.txt", header=TRUE, sep="\t")
+		genelab = as.character(genelabmat[,2])
+		
+		rownames(brainall) = genelab
+
+		# focus only on samples derived from adults above age 30 (stage >= 13)
+		# stage 13 = 20-40 years
+		# stage 14 = 40-60 years
+		# stage 15 = 60+ years
+		adultsamp = which(stageall >= 13) # 404 samples
+		
+		
+		# focus only on midbrain samples (striatum = STR)
+		table(brainregions)
+		#brainregions
+		#A1C AMY CBC CGE DFC DIE DTH  FC HIP IPC ITC LGE M1C  MD MFC MGE MSC  OC OFC  PC S1C STC STR  TC URL 
+		# 83  76  71   4  88   3   4   3  82  85  78   4  72  73  90   4  13   5  82   6  72  86  75   5   6 
+		#V1C  VF VFC 
+		# 83   2  85 
+		
+		striatum = which(brainregions == "STR")
+		
+		striatum_adult = intersect(adultsamp, striatum)
+		# 26 samples 
+		
+		#table(annotfull$V8[striatum_adult])[which(table(annotfull$V8[striatum_adult])!=0)]
+		#21 Y 22 Y 23 Y 27 Y 30 Y 36 Y 37 Y 40 Y 42 Y 55 Y 64 Y 70 Y 82 Y 
+   		#	1    2    2    1    2    2    4    4    1    1    2    2    2
+   	
+   		striatum_adult_ages = as.numeric(sapply(striatum_adult_ages, function(x) strsplit(as.matrix(x), " ")[[1]][1]))
+				
+		brain_path = summarized_pathway_activity(brainall[,striatum_adult], gsets=pathlst, type="median", minsize = 10)			
+				
+		write.table(striatum_adult_ages, file="human_brain_transcriptome_atlas_ages.txt", quote=F, col.names=F, row.names=F)
+		write.table(round(brain_path,2), file="human_brain_transcriptome_atlas_pathway_activity_matrix.txt", quote=F, col.names=F, row.names=T)
+		
 		
 }
 
